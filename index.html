@@ -15,7 +15,7 @@
             display: block;
         }
 
-        #gravitySlider, #clearButton, #sizeToggleButton, #forceButton {
+        #gravitySlider, #clearButton, #forceButton {
             position: absolute;
             left: 20px;
             padding: 12px 24px;
@@ -40,24 +40,17 @@
             color: #ffffff;
         }
 
-        #sizeToggleButton {
-            top: 100px;
-            background-color: #2ecc71;
-            color: #ffffff;
-        }
-
         #forceButton {
-            top: 140px;
+            top: 100px;
             background-color: #e74c3c;
             color: #ffffff;
         }
 
         #clearButton:hover { background-color: #2980b9; transform: scale(1.05); }
-        #sizeToggleButton:hover { background-color: #27ae60; transform: scale(1.05); }
         #forceButton:hover { background-color: #c0392b; transform: scale(1.05); }
 
         @media (max-width: 768px) {
-            #gravitySlider, #clearButton, #sizeToggleButton, #forceButton {
+            #gravitySlider, #clearButton, #forceButton {
                 left: 10px;
                 font-size: 12px;
                 padding: 8px 16px;
@@ -72,7 +65,6 @@
 <body>
     <input type="range" id="gravitySlider" min="0" max="2" step="0.1" value="0" />
     <button id="clearButton">Clear Particles</button>
-    <button id="sizeToggleButton">Toggle Size Doubling</button>
     <button id="forceButton">Apply Force</button>
     <canvas id="canvas"></canvas>
 
@@ -152,7 +144,6 @@
         let isMouseDown = false;
         let isForceMode = false;
         let lastMousePosition = { x: 0, y: 0 };
-        let doubleSizeOnCollision = false;
 
         function updateCanvasSize() {
             canvas.width = window.innerWidth;
@@ -168,7 +159,8 @@
         }
 
         function gameLoop() {
-            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.fillStyle = "rgba(0, 0, 0, 0.1)";
+            context.fillRect(0, 0, canvas.width, canvas.height);
 
             for (let i = 0; i < particles.length; i++) {
                 const particle = particles[i];
@@ -179,10 +171,6 @@
                     const otherParticle = particles[j];
                     if (particle.checkCollision(otherParticle)) {
                         particle.handleCollision(otherParticle);
-                        if (doubleSizeOnCollision) {
-                            particle.radius *= 2;
-                            otherParticle.radius *= 1;
-                        }
                     }
                 }
             }
@@ -273,12 +261,6 @@
         const clearButton = document.getElementById('clearButton');
         clearButton.addEventListener('click', () => {
             particles.length = 0;
-        });
-
-        const sizeToggleButton = document.getElementById('sizeToggleButton');
-        sizeToggleButton.addEventListener('click', () => {
-            doubleSizeOnCollision = !doubleSizeOnCollision;
-            sizeToggleButton.textContent = doubleSizeOnCollision ? 'Stop Size Doubling' : 'Toggle Size Doubling';
         });
 
         const forceButton = document.getElementById('forceButton');
