@@ -55,10 +55,22 @@
         #clearButton:hover { background-color: #2980b9; transform: scale(1.05); }
         #sizeToggleButton:hover { background-color: #27ae60; transform: scale(1.05); }
         #forceButton:hover { background-color: #c0392b; transform: scale(1.05); }
+
+        @media (max-width: 768px) {
+            #gravitySlider, #clearButton, #sizeToggleButton, #forceButton {
+                left: 10px;
+                font-size: 12px;
+                padding: 8px 16px;
+            }
+
+            #gravitySlider {
+                width: 150px;
+            }
+        }
     </style>
 </head>
 <body>
-    <input type="range" id="gravitySlider" min="0" max="2" step="0.1" value="0.5" />
+    <input type="range" id="gravitySlider" min="0" max="2" step="0.1" value="0" />
     <button id="clearButton">Clear Particles</button>
     <button id="sizeToggleButton">Toggle Size Doubling</button>
     <button id="forceButton">Apply Force</button>
@@ -67,7 +79,7 @@
     <script>
         const collisionSound = new Audio('boing-101318.mp3'); // Replace with actual sound URL
 
-        let GRAVITY = 0.5;
+        let GRAVITY = 0; // Default gravity is set to zero
         const PARTICLE_INTERVAL = 10;
         const MAX_PARTICLES = 1000;
 
@@ -127,12 +139,10 @@
             }
 
             playSound() {
-                // Create a new audio instance for each collision
                 const sound = collisionSound.cloneNode();
                 sound.play().catch(() => {
-                // Handle cases where the browser blocks autoplay
-                console.warn('Audio playback failed');
-            });
+                    console.warn('Audio playback failed');
+                });
             }
         }
 
@@ -183,16 +193,16 @@
         function applyForce(event) {
             if (!isForceMode) return;
 
-            const mouseX = event.clientX;
-            const mouseY = event.clientY;
+            const mouseX = event.clientX || event.touches[0].clientX;
+            const mouseY = event.clientY || event.touches[0].clientY;
 
             particles.forEach((particle) => {
                 const dx = particle.x - mouseX;
                 const dy = particle.y - mouseY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance < 100) { // Apply force to nearby particles
-                    const force = 1 / (distance || 1); // Avoid division by zero
+                if (distance < 100) {
+                    const force = 1 / (distance || 1);
                     particle.velX += (dx / distance) * force * 20;
                     particle.velY += (dy / distance) * force * 20;
                 }
@@ -221,10 +231,37 @@
                 }
             }
 
-            applyForce(event); // Apply force if in force mode
+            applyForce(event);
         });
 
         window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+
+        window.addEventListener('touchstart', (event) => {
+            isMouseDown = true;
+            const touch = event.touches[0];
+            lastMousePosition = { x: touch.clientX, y: touch.clientY };
+            createParticle(touch.clientX, touch.clientY);
+        });
+
+        window.addEventListener('touchmove', (event) => {
+            if (isMouseDown) {
+                const touch = event.touches[0];
+                const dx = touch.clientX - lastMousePosition.x;
+                const dy = touch.clientY - lastMousePosition.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > PARTICLE_INTERVAL) {
+                    lastMousePosition = { x: touch.clientX, y: touch.clientY };
+                    createParticle(touch.clientX, touch.clientY);
+                }
+            }
+
+            applyForce(event);
+        });
+
+        window.addEventListener('touchend', () => {
             isMouseDown = false;
         });
 
