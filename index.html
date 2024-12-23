@@ -104,7 +104,7 @@
                     this.playSound();
                 }
                 if (this.y + this.radius > canvas.height) {
-                    this.velY *= -0.8; // Simulate energy loss
+                    this.velY *= -0.2; // Simulate energy loss
                     this.y = canvas.height - this.radius;
                     this.playSound();
                 }
@@ -181,7 +181,7 @@
                         particle.handleCollision(otherParticle);
                         if (doubleSizeOnCollision) {
                             particle.radius *= 2;
-                            otherParticle.radius *= 2;
+                            otherParticle.radius *= 1;
                         }
                     }
                 }
