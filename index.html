@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Particle Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #gravitySlider, #clearButton, #sizeToggleButton, #forceButton {
+            position: absolute;
+            left: 20px;
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            outline: none;
+            transition: background-color 0.3s, transform 0.2s;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+        }
+
+        #gravitySlider {
+            top: 20px;
+            appearance: none;
+            width: 200px;
+        }
+
+        #clearButton {
+            top: 60px;
+            background-color: #3498db;
+            color: #ffffff;
+        }
+
+        #sizeToggleButton {
+            top: 100px;
+            background-color: #2ecc71;
+            color: #ffffff;
+        }
+
+        #forceButton {
+            top: 140px;
+            background-color: #e74c3c;
+            color: #ffffff;
+        }
+
+        #clearButton:hover { background-color: #2980b9; transform: scale(1.05); }
+        #sizeToggleButton:hover { background-color: #27ae60; transform: scale(1.05); }
+        #forceButton:hover { background-color: #c0392b; transform: scale(1.05); }
+    </style>
+</head>
+<body>
+    <input type="range" id="gravitySlider" min="0" max="2" step="0.1" value="0.5" />
+    <button id="clearButton">Clear Particles</button>
+    <button id="sizeToggleButton">Toggle Size Doubling</button>
+    <button id="forceButton">Apply Force</button>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const collisionSound = new Audio('boing-101318.mp3'); // Replace with actual sound URL
+
+        let GRAVITY = 0.5;
+        const PARTICLE_INTERVAL = 10;
+        const MAX_PARTICLES = 1000;
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 5;
+                this.velX = Math.random() * 4 - 2;
+                this.velY = Math.random() * 4 - 2;
+                this.color = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
+            }
+
+            update() {
+                this.velY += GRAVITY; // Apply gravity
+                this.x += this.velX;
+                this.y += this.velY;
+
+                // Bounce off walls
+                if (this.x - this.radius < 0 || this.x + this.radius > canvas.width) {
+                    this.velX *= -1;
+                    this.playSound();
+                }
+                if (this.y + this.radius > canvas.height) {
+                    this.velY *= -0.8; // Simulate energy loss
+                    this.y = canvas.height - this.radius;
+                    this.playSound();
+                }
+                if (this.y - this.radius < 0) {
+                    this.velY *= -1;
+                    this.playSound();
+                }
+            }
+
+            draw(context) {
+                context.fillStyle = this.color;
+                context.beginPath();
+                context.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+                context.fill();
+            }
+
+            checkCollision(otherParticle) {
+                const dx = otherParticle.x - this.x;
+                const dy = otherParticle.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                return distance < this.radius + otherParticle.radius;
+            }
+
+            handleCollision(otherParticle) {
+                const tempVelX = this.velX;
+                const tempVelY = this.velY;
+                this.velX = otherParticle.velX;
+                this.velY = otherParticle.velY;
+                otherParticle.velX = tempVelX;
+                otherParticle.velY = tempVelY;
+                this.playSound();
+            }
+
+            playSound() {
+                // Create a new audio instance for each collision
+                const sound = collisionSound.cloneNode();
+                sound.play().catch(() => {
+                // Handle cases where the browser blocks autoplay
+                console.warn('Audio playback failed');
+            });
+            }
+        }
+
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        const particles = [];
+        let isMouseDown = false;
+        let isForceMode = false;
+        let lastMousePosition = { x: 0, y: 0 };
+        let doubleSizeOnCollision = false;
+
+        function updateCanvasSize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', updateCanvasSize);
+
+        function createParticle(x, y) {
+            if (particles.length < MAX_PARTICLES) {
+                particles.push(new Particle(x, y));
+            }
+        }
+
+        function gameLoop() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < particles.length; i++) {
+                const particle = particles[i];
+                particle.update();
+                particle.draw(context);
+
+                for (let j = i + 1; j < particles.length; j++) {
+                    const otherParticle = particles[j];
+                    if (particle.checkCollision(otherParticle)) {
+                        particle.handleCollision(otherParticle);
+                        if (doubleSizeOnCollision) {
+                            particle.radius *= 2;
+                            otherParticle.radius *= 2;
+                        }
+                    }
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function applyForce(event) {
+            if (!isForceMode) return;
+
+            const mouseX = event.clientX;
+            const mouseY = event.clientY;
+
+            particles.forEach((particle) => {
+                const dx = particle.x - mouseX;
+                const dy = particle.y - mouseY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < 100) { // Apply force to nearby particles
+                    const force = 1 / (distance || 1); // Avoid division by zero
+                    particle.velX += (dx / distance) * force * 20;
+                    particle.velY += (dy / distance) * force * 20;
+                }
+            });
+        }
+
+        updateCanvasSize();
+
+        window.addEventListener('mousedown', (event) => {
+            if (event.button === 0) {
+                isMouseDown = true;
+                lastMousePosition = { x: event.clientX, y: event.clientY };
+                createParticle(event.clientX, event.clientY);
+            }
+        });
+
+        window.addEventListener('mousemove', (event) => {
+            if (isMouseDown) {
+                const dx = event.clientX - lastMousePosition.x;
+                const dy = event.clientY - lastMousePosition.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > PARTICLE_INTERVAL) {
+                    lastMousePosition = { x: event.clientX, y: event.clientY };
+                    createParticle(event.clientX, event.clientY);
+                }
+            }
+
+            applyForce(event); // Apply force if in force mode
+        });
+
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+
+        const gravitySlider = document.getElementById('gravitySlider');
+        gravitySlider.addEventListener('input', (event) => {
+            GRAVITY = parseFloat(event.target.value);
+        });
+
+        const clearButton = document.getElementById('clearButton');
+        clearButton.addEventListener('click', () => {
+            particles.length = 0;
+        });
+
+        const sizeToggleButton = document.getElementById('sizeToggleButton');
+        sizeToggleButton.addEventListener('click', () => {
+            doubleSizeOnCollision = !doubleSizeOnCollision;
+            sizeToggleButton.textContent = doubleSizeOnCollision ? 'Stop Size Doubling' : 'Toggle Size Doubling';
+        });
+
+        const forceButton = document.getElementById('forceButton');
+        forceButton.addEventListener('click', () => {
+            isForceMode = !isForceMode;
+            forceButton.textContent = isForceMode ? 'Stop Force' : 'Apply Force';
+        });
+
+        gameLoop();
+    </script>
+</body>
+</html>
